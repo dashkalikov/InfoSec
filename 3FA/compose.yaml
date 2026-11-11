@@ -1,0 +1,30 @@
+services:
+  app:
+    build: .
+    init: true
+    ports:
+      - "127.0.0.1:6080:6080"
+      - "${THREEFA_LAN_IP:-127.0.0.1}:8765:8765"
+    environment:
+      THREEFA_TOTP_HOST: "${THREEFA_LAN_IP:-127.0.0.1}"
+      THREEFA_TOTP_HTTP_PORT: "8765"
+    volumes:
+      - databases:/opt/threefa/databases
+      - rsa-keys:/opt/threefa/rsa_keys
+      - primes:/opt/threefa/generated_primes
+      - config:/opt/threefa/config
+      - settings:/home/threefa/.config
+      - exports:/home/threefa/exports
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:6080/vnc.html"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  databases:
+  rsa-keys:
+  primes:
+  config:
+  settings:
+  exports:

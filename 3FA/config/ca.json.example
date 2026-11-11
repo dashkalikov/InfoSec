@@ -1,0 +1,68 @@
+{
+  "_comment": "Конфигурация центра сертификации (CA)",
+  "_description": "Настройки для управления сертификатами, их выпуска, обновления и отзыва",
+  "_instructions": "Скопируйте этот файл в ca.json и при необходимости измените значения",
+  
+  "certificate": {
+    "_comment": "Настройки сертификатов",
+    "root_key_size": 4096,
+    "_comment_root_key_size": "Размер ключа корневого сертификата в битах (рекомендуется: 4096)",
+    
+    "root_ca_days": 3650,
+    "_comment_root_ca_days": "Срок действия корневого сертификата в днях (10 лет = 3650 дней)",
+    
+    "leaf_cert_days": 825,
+    "_comment_leaf_cert_days": "Срок действия пользовательских сертификатов в днях (примерно 2.25 года = 825 дней)"
+  },
+  
+  "directories": {
+    "_comment": "Пути к директориям CA",
+    "ca_dir": "ca",
+    "_comment_ca_dir": "Директория для файлов CA (относительно корня проекта)",
+    
+    "databases_dir": "databases",
+    "_comment_databases_dir": "Директория для баз данных (относительно корня проекта)"
+  },
+  
+  "certificate_worker": {
+    "_comment": "Настройки воркера для автоматического управления сертификатами",
+    "scan_interval_seconds": 300,
+    "_comment_scan_interval_seconds": "Интервал сканирования сертификатов в секундах (300 = 5 минут)",
+    
+    "renew_before_days": 30,
+    "_comment_renew_before_days": "Обновлять сертификаты за N дней до истечения (30 = за месяц)",
+    
+    "revoke_after_days": 0,
+    "_comment_revoke_after_days": "Отзывать сертификаты через N дней после истечения (0 = не отзывать автоматически)",
+    
+    "delete_revoked_after_days": 90,
+    "_comment_delete_revoked_after_days": "Удалять отозванные сертификаты из базы через N дней (90 = через 3 месяца)"
+  },
+  
+  "server": {
+    "_comment": "Настройки сервера для работы с сертификатами",
+    "bind_addr": "127.0.0.1",
+    "_comment_bind_addr": "IP адрес для привязки сервера (127.0.0.1 = только локальный доступ)",
+    
+    "port": 9090,
+    "_comment_port": "Порт сервера для работы с сертификатами"
+  },
+  
+  "crl": {
+    "_comment": "Настройки списка отозванных сертификатов (Certificate Revocation List)",
+    "days": 7,
+    "_comment_days": "Срок действия CRL в днях (7 = неделя)"
+  },
+  
+  "ocsp": {
+    "_comment": "Настройки OCSP (Online Certificate Status Protocol)",
+    "days": 7,
+    "_comment_days": "Срок действия OCSP ответов в днях (7 = неделя)"
+  },
+  
+  "tsa": {
+    "_comment": "Настройки TSA (Time Stamping Authority) для подписи PDF",
+    "url": "",
+    "_comment_url": "URL сервера временных меток (оставьте пустым, если не используется). Пример: http://timestamp.digicert.com"
+  }
+}

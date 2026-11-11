@@ -1,0 +1,365 @@
+digraph Architecture3FA {
+    rankdir=TB;
+    splines=ortho;
+    nodesep=0.5;
+    ranksep=1.5;
+    node [shape=box, style=rounded, width=2.5, height=1.2];
+    edge [minlen=2, penwidth=1.5];
+    
+    // Группировка для лучшего расположения
+    compound=true;
+    concentrate=true;
+    
+    // Пользователь - рисуем человечка
+    User [label=<<table border="0" cellborder="0" cellspacing="0">
+        <tr><td align="center" valign="bottom">👤</td></tr>
+        <tr><td align="center" valign="top"><b>User</b><br/>(Пользователь)</td></tr>
+    </table>>, shape=none, style=filled, fillcolor=lightblue, width=1.5, height=1.5];
+    
+    // WIDGETS (Templates/Front-end) - горизонтальное расположение
+    subgraph cluster_widgets {
+        label="WIDGETS\n(Templates/Front-end)";
+        style=dashed;
+        fillcolor=lightpink;
+        rankdir=LR;
+        
+        // User Widgets - горизонтально
+        subgraph cluster_user_widgets {
+            label="User Widgets";
+            style=solid;
+            fillcolor=white;
+            rankdir=LR;
+            
+            AuthWidgets [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>Authentication Widgets</b></td></tr>
+                <tr><td align="left">• Login/Register Form</td></tr>
+                <tr><td align="left">• Forgot Password</td></tr>
+                <tr><td align="left">• Main Menu</td></tr>
+            </table>>, style=filled, fillcolor=white];
+            FactorWidgets [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>Factor Auth Widgets</b></td></tr>
+                <tr><td align="left">• TOTP Input</td></tr>
+                <tr><td align="left">• Face Auth</td></tr>
+                <tr><td align="left">• Camera Capture</td></tr>
+            </table>>, style=filled, fillcolor=white];
+            FunctionalWidgets [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>Functional Widgets</b></td></tr>
+                <tr><td align="left">• Kuznechik Form</td></tr>
+                <tr><td align="left">• Admin Files</td></tr>
+                <tr><td align="left">• Session Management</td></tr>
+            </table>>, style=filled, fillcolor=white];
+        }
+        
+        // Admin Widgets
+        subgraph cluster_admin_widgets {
+            label="Admin Widgets";
+            style=solid;
+            fillcolor=lightcoral;
+            
+            AdminWidgets [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>AdminFilesWidget</b></td></tr>
+                <tr><td align="left">• Files Tab (Admin Files)</td></tr>
+                <tr><td align="left">• Users Tab (User Management)</td></tr>
+            </table>>, style=filled, fillcolor=lightcoral];
+        }
+    }
+    
+    // VIEWS
+    subgraph cluster_views {
+        label="VIEWS\n(MainWindow)";
+        style=dashed;
+        fillcolor=lightblue;
+        
+        MainWindow [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>MainWindow</b></td></tr>
+                <tr><td align="left">• QStackedWidget navigation</td></tr>
+                <tr><td align="left">• Service initialization</td></tr>
+                <tr><td align="left">• Signal/slot coordination</td></tr>
+                <tr><td align="left">• Session restoration</td></tr>
+            </table>>, style=filled, fillcolor=lightcyan];
+    }
+    
+    // VALIDATION (Forms/Serializers) - отдельный слой между Views и Services
+    subgraph cluster_validation {
+        label="VALIDATION\n(Forms/Serializers)";
+        style=dashed;
+        fillcolor=lightyellow;
+        
+        Validation [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>Validation</b></td></tr>
+                <tr><td align="left">• Input validation</td></tr>
+                <tr><td align="left">• Data transformation</td></tr>
+            </table>>, style=filled, fillcolor=yellow];
+    }
+    
+    // SERVICES - горизонтальное расположение для лучшей компактности
+    subgraph cluster_services {
+        label="SERVICES\n(Business Logic)";
+        style=dashed;
+        fillcolor=lightgreen;
+        rankdir=LR;
+        
+        // User Services - горизонтально в два ряда
+        subgraph cluster_user_services {
+            label="User Services";
+            style=solid;
+            fillcolor=white;
+            rankdir=LR;
+            
+            AuthService [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>Auth Service</b></td></tr>
+                <tr><td align="left">• registerUser, loginUser</td></tr>
+                <tr><td align="left">• Stribog-256 password hash</td></tr>
+                <tr><td align="left">• Session management</td></tr>
+                <tr><td align="left">• Brute-force protection (5 attempts)</td></tr>
+                <tr><td align="left">• Account lockout (2 min)</td></tr>
+            </table>>, style=filled, fillcolor=palegreen];
+            TOTPService [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>TOTP Service</b></td></tr>
+                <tr><td align="left">• generateSecret, generateTOTPCode</td></tr>
+                <tr><td align="left">• verifyTOTPCode (window=1)</td></tr>
+                <tr><td align="left">• QR Code generation</td></tr>
+                <tr><td align="left">• WebSocket server</td></tr>
+            </table>>, style=filled, fillcolor=palegreen];
+            FaceAuthService [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>Face Auth Service</b></td></tr>
+                <tr><td align="left">• extractEmbedding (OpenCV DNN)</td></tr>
+                <tr><td align="left">• verifyEmbedding (cosine similarity)</td></tr>
+                <tr><td align="left">• storeEmbedding, loadEmbedding</td></tr>
+                <tr><td align="left">• Face detection &amp; alignment</td></tr>
+            </table>>, style=filled, fillcolor=palegreen];
+            SessionManager [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>Session Manager</b></td></tr>
+                <tr><td align="left">• createSession (JWT-like tokens)</td></tr>
+                <tr><td align="left">• isValidSession, getUserIdFromToken</td></tr>
+                <tr><td align="left">• cleanupExpiredSessions</td></tr>
+            </table>>, style=filled, fillcolor=palegreen];
+            HTTPMiddleware [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>HTTP Middleware</b></td></tr>
+                <tr><td align="left">• extractSessionToken</td></tr>
+                <tr><td align="left">• loadUserContext</td></tr>
+                <tr><td align="left">• createErrorResponse</td></tr>
+            </table>>, style=filled, fillcolor=palegreen];
+            EmailService [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>Email Service</b></td></tr>
+                <tr><td align="left">• sendEmail (SMTP/API)</td></tr>
+                <tr><td align="left">• sendVerificationCode</td></tr>
+                <tr><td align="left">• Python script fallback</td></tr>
+            </table>>, style=filled, fillcolor=palegreen];
+        }
+        
+        // Admin Services
+        subgraph cluster_admin_services {
+            label="Admin Services";
+            style=solid;
+            fillcolor=lightcoral;
+            
+            RBACGuard [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>RBAC Guard</b></td></tr>
+                <tr><td align="left">• isAdmin (user/admin roles)</td></tr>
+                <tr><td align="left">• hasAccess (owner/admin check)</td></tr>
+                <tr><td align="left">• getUserRole</td></tr>
+            </table>>, style=filled, fillcolor=lightcoral];
+        }
+        
+        // Background Workers - горизонтально
+        subgraph cluster_workers {
+            label="Background Workers";
+            style=solid;
+            fillcolor=white;
+            rankdir=LR;
+            
+            CertificateWorker [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>Certificate Worker</b></td></tr>
+                <tr><td align="left">• Background thread</td></tr>
+                <tr><td align="left">• Certificate expiry check</td></tr>
+                <tr><td align="left">• Auto-renewal</td></tr>
+            </table>>, style=filled, fillcolor=palegreen];
+            LockoutCleanupWorker [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>Lockout Cleanup Worker</b></td></tr>
+                <tr><td align="left">• Background thread (30s interval)</td></tr>
+                <tr><td align="left">• Auto-unlock expired lockouts</td></tr>
+                <tr><td align="left">• setLockoutUntil(NULL)</td></tr>
+            </table>>, style=filled, fillcolor=palegreen];
+        }
+    }
+    
+    // MANAGERS - горизонтально
+    subgraph cluster_managers {
+        label="MANAGERS\n(Data Access)";
+        style=dashed;
+        fillcolor=lightsteelblue;
+        rankdir=LR;
+        
+        Database [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>Database</b></td></tr>
+                <tr><td align="left">• CRUD: createUser, findUserByEmail</td></tr>
+                <tr><td align="left">• Face embeddings, PDF storage</td></tr>
+                <tr><td align="left">• PDF encryption (Kuznechik)</td></tr>
+                <tr><td align="left">• Transactions, audit_log</td></tr>
+            </table>>, style=filled, fillcolor=lightblue];
+        CaDatabase [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>CaDatabase</b></td></tr>
+                <tr><td align="left">• Certificate CRUD</td></tr>
+                <tr><td align="left">• CA certificate storage</td></tr>
+                <tr><td align="left">• Certificate metadata</td></tr>
+            </table>>, style=filled, fillcolor=lightblue];
+    }
+    
+    // MODELS - горизонтально
+    subgraph cluster_models {
+        label="MODELS\n(Data)";
+        style=dashed;
+        fillcolor=lavender;
+        rankdir=LR;
+        
+        UserModel [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>User Model</b></td></tr>
+                <tr><td align="left">• id, email, password_hash</td></tr>
+                <tr><td align="left">• role, is_active, totp_secret</td></tr>
+                <tr><td align="left">• validateEmail, validatePassword</td></tr>
+            </table>>, style=filled, fillcolor=plum];
+        AppDataEntities [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>Application Data</b></td></tr>
+                <tr><td align="left">• Session (token, expires_at)</td></tr>
+                <tr><td align="left">• PDF (encrypted_data, iv, tag)</td></tr>
+                <tr><td align="left">• Face Embedding (BLOB)</td></tr>
+            </table>>, style=filled, fillcolor=plum];
+        CertificateEntity [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>Certificate Entity</b></td></tr>
+                <tr><td align="left">• Certificate (PEM, expiry)</td></tr>
+                <tr><td align="left">• Private key, chain</td></tr>
+                <tr><td align="left">• Certificate metadata</td></tr>
+            </table>>, style=filled, fillcolor=plum];
+    }
+    
+    // INFRASTRUCTURE - горизонтально в два ряда
+    subgraph cluster_infrastructure {
+        label="INFRASTRUCTURE\n(Low-level Services)";
+        style=dashed;
+        fillcolor=wheat;
+        rankdir=LR;
+        
+        CryptoStack [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>Cryptography Stack</b></td></tr>
+                <tr><td align="left">• CryptoFacade</td></tr>
+                <tr><td align="left">• KuznechikEncryption</td></tr>
+                <tr><td align="left">• RSACrypto</td></tr>
+            </table>>, style=filled, fillcolor=navajowhite];
+        VideoStack [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>Video Processing</b></td></tr>
+                <tr><td align="left">• CameraThread</td></tr>
+                <tr><td align="left">• VideoCaptureThread</td></tr>
+            </table>>, style=filled, fillcolor=navajowhite];
+        HTTPServer [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>HTTP Server</b></td></tr>
+                <tr><td align="left">• minica.cpp</td></tr>
+                <tr><td align="left">• PDF signing</td></tr>
+                <tr><td align="left">• Certificate management</td></tr>
+            </table>>, style=filled, fillcolor=navajowhite];
+        ExternalLibs [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="left"><b>External Libraries</b></td></tr>
+                <tr><td align="left">• Qt Framework</td></tr>
+                <tr><td align="left">• OpenCV, OpenSSL</td></tr>
+                <tr><td align="left">• MediaPipe</td></tr>
+            </table>>, style=filled, fillcolor=navajowhite];
+    }
+    
+    // DATABASE (внизу как цилиндр)
+    DatabaseStorage [label=<<table border="0" cellborder="0" cellspacing="0">
+                <tr><td align="center"><b>DATABASE</b></td></tr>
+                <tr><td align="center">SQLite</td></tr>
+            </table>>, shape=cylinder, style=filled, fillcolor=lightgray];
+    
+    // Связи от пользователя к виджетам
+    User -> AuthWidgets [color=blue, style=solid, penwidth=2];
+    User -> FactorWidgets [color=blue, style=solid, penwidth=2];
+    User -> FunctionalWidgets [color=blue, style=solid, penwidth=2];
+    User -> AdminWidgets [color=blue, style=solid, penwidth=2];
+    
+    // Связи Widgets -> MainWindow
+    AuthWidgets -> MainWindow [color=purple, style=solid];
+    FactorWidgets -> MainWindow [color=purple, style=solid];
+    FunctionalWidgets -> MainWindow [color=purple, style=solid];
+    AdminWidgets -> MainWindow [color=purple, style=solid];
+    
+    // Связи MainWindow -> Validation -> Services
+    MainWindow -> Validation [color=darkblue, style=solid, penwidth=2];
+    Validation -> AuthService [color=darkblue, style=solid];
+    Validation -> TOTPService [color=darkblue, style=solid];
+    Validation -> FaceAuthService [color=darkblue, style=solid];
+    MainWindow -> RBACGuard [color=darkred, style=solid];
+    
+    // Связи Widgets -> Services (прямые связи, минующие MainWindow/Validation)
+    AuthWidgets -> EmailService [color=darkgreen, style=dashed];
+    FactorWidgets -> FaceAuthService [color=darkgreen, style=dashed, constraint=false];
+    
+    // Связи Widgets -> Database (прямые связи виджетов с базой данных)
+    AdminWidgets -> Database [color=darkcyan, style=dashed, constraint=false];
+    FunctionalWidgets -> Database [color=darkcyan, style=dashed, constraint=false];
+    AuthWidgets -> Database [color=darkcyan, style=dashed, constraint=false];
+    
+    // Связи Widgets -> Services (прямые связи виджетов с сервисами)
+    AuthWidgets -> AuthService [color=darkcyan, style=dashed, constraint=false];
+    FunctionalWidgets -> AuthService [color=darkcyan, style=dashed, constraint=false];
+    
+    // Связи Services -> Managers (как в Django: Services используют Managers для работы с данными)
+    // Используем невидимые узлы для группировки связей к Database
+    node [style=invis, width=0, height=0, label=""];
+    db_connector1 [style=invis];
+    db_connector2 [style=invis];
+    node [style=rounded, width=2.5, height=1.2];
+    
+    AuthService -> db_connector1 [color=darkgreen, style=solid, weight=10];
+    TOTPService -> db_connector1 [color=darkgreen, style=solid, weight=10];
+    FaceAuthService -> db_connector1 [color=darkgreen, style=solid, weight=10];
+    EmailService -> db_connector1 [color=darkgreen, style=solid, weight=10];
+    db_connector1 -> Database [color=darkgreen, style=solid, weight=10];
+    
+    RBACGuard -> db_connector2 [color=darkred, style=solid, weight=10];
+    LockoutCleanupWorker -> db_connector2 [color=darkblue, style=solid, weight=10];
+    db_connector2 -> Database [color=darkred, style=solid, weight=10];
+    
+    CertificateWorker -> CaDatabase [color=darkblue, style=solid];
+    
+    // Связи HTTPServer -> Services (SessionManager, HTTPMiddleware и RBACGuard используются в HTTP сервере)
+    HTTPServer -> SessionManager [color=darkorange, style=solid];
+    HTTPServer -> HTTPMiddleware [color=darkorange, style=solid];
+    HTTPServer -> RBACGuard [color=darkorange, style=dashed, constraint=false];
+    HTTPMiddleware -> SessionManager [color=darkorange, style=solid];
+    SessionManager -> Database [color=darkgreen, style=solid];
+    
+    // Связи Managers -> Models (как в Django: Managers работают с Models)
+    // Используем невидимый узел для группировки связей к Models
+    node [style=invis, width=0, height=0, label=""];
+    model_connector [style=invis];
+    node [style=rounded, width=2.5, height=1.2];
+    
+    Database -> model_connector [color=darkviolet, style=solid, weight=10];
+    model_connector -> UserModel [color=darkviolet, style=solid, weight=10];
+    model_connector -> AppDataEntities [color=darkviolet, style=solid, weight=10];
+    CaDatabase -> CertificateEntity [color=darkviolet, style=solid];
+    
+    // Связи Models -> Database
+    // Используем невидимый узел для группировки связей к DatabaseStorage
+    node [style=invis, width=0, height=0, label=""];
+    storage_connector [style=invis];
+    node [style=rounded, width=2.5, height=1.2];
+    
+    UserModel -> storage_connector [color=gray, style=solid, weight=10];
+    AppDataEntities -> storage_connector [color=gray, style=solid, weight=10];
+    CertificateEntity -> storage_connector [color=gray, style=solid, weight=10];
+    Database -> storage_connector [color=gray, style=solid, penwidth=2, weight=10];
+    CaDatabase -> storage_connector [color=gray, style=solid, penwidth=2, weight=10];
+    storage_connector -> DatabaseStorage [color=gray, style=solid, penwidth=2, weight=10];
+    
+    // Связи с Infrastructure
+    FunctionalWidgets -> CryptoStack [color=darkgoldenrod, style=dashed, constraint=false];
+    AuthService -> CryptoStack [color=darkgoldenrod, style=dashed, constraint=false];
+    TOTPService -> CryptoStack [color=darkgoldenrod, style=dashed, constraint=false];
+    FaceAuthService -> VideoStack [color=darkgoldenrod, style=dashed, constraint=false];
+    FactorWidgets -> VideoStack [color=darkgoldenrod, style=dashed, constraint=false];
+    
+    CryptoStack -> ExternalLibs [color=darkgoldenrod, style=dotted, constraint=false];
+    VideoStack -> ExternalLibs [color=darkgoldenrod, style=dotted, constraint=false];
+}

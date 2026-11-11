@@ -1,0 +1,6 @@
+services:
+  app:
+    devices:
+      - "${THREEFA_CAMERA_DEVICE:-/dev/video0}:/dev/video0"
+    group_add:
+      - "${THREEFA_CAMERA_GID:-44}"

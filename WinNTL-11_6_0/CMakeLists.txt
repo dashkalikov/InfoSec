@@ -1,0 +1,259 @@
+cmake_minimum_required(VERSION 3.15)
+project(NTL VERSION 11.6.0 LANGUAGES CXX)
+
+# Generate compile_commands.json for IDE support (IntelliSense, clangd, etc.)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Options
+option(NTL_SHARED "Build shared library" OFF)
+option(NTL_THREADS "Enable thread safety" ON)
+option(NTL_THREAD_BOOST "Enable thread boost" ON)
+option(NTL_EXCEPTIONS "Enable exceptions" OFF)
+
+set(USE_SYSTEM_NTL OFF)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(USE_SYSTEM_NTL ON)
+endif()
+
+# Collect all source files
+if(NOT USE_SYSTEM_NTL)
+    file(GLOB NTL_SOURCES "src/*.cpp")
+endif()
+
+# Remove GetPID.cpp if it's Unix-specific (we'll use GetPID2.cpp for Windows)
+if(WIN32)
+    list(REMOVE_ITEM NTL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/GetPID.cpp")
+    # Add GetPID2.cpp for Windows
+    list(APPEND NTL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/GetPID/GetPID2.cpp")
+endif()
+
+# Compiler definitions
+add_definitions(-DNDEBUG)
+
+# Note: NTL_THREADS, NTL_THREAD_BOOST, and NTL_EXCEPTIONS are already defined in include/NTL/config.h
+# We don't redefine them here to avoid redefinition warnings
+# The CMake options are kept for documentation purposes only
+
+# Windows-specific definitions
+if(WIN32)
+    add_definitions(-D_WIN64)
+endif()
+
+# Compiler-specific options
+if(MSVC)
+    add_compile_options(/EHsc /O2)
+    # Disable some MSVC warnings
+    add_compile_options(/wd4244 /wd4267 /wd4996)
+else()
+    add_compile_options(-O2 -Wall -Wextra)
+    # Disable GCC warnings that NTL might trigger
+    add_compile_options(
+        -Wno-unused-parameter       # Неиспользуемые параметры
+        -Wno-sign-compare           # Сравнение знаковых и беззнаковых
+        -Wno-deprecated-copy        # Устаревшие конструкторы копирования
+        -Wno-unused-variable        # Неиспользуемые переменные
+        -Wno-unused-function        # Неиспользуемые функции
+        -Wno-unused-but-set-variable # Переменные установлены но не используются
+        -Wno-maybe-uninitialized    # Возможно неинициализированные переменные
+        -Wno-format                 # Проблемы с форматированием
+        -Wno-format-security        # Проблемы безопасности форматирования
+        -Wno-strict-aliasing        # Строгий алиасинг
+        -Wno-type-limits             # Пределы типов
+        -Wno-array-bounds            # Границы массивов
+        -Wno-implicit-fallthrough   # Fallthrough в switch-case (намеренное)
+        -Wno-misleading-indentation # Вводящая в заблуждение индентация
+        -Wno-reorder                 # Порядок инициализации полей
+    )
+endif()
+
+# The vendored NTL headers describe Windows' data model. Use matching system
+# headers and binaries together on Linux.
+if(USE_SYSTEM_NTL)
+    find_path(NTL_INCLUDE_DIR NAMES NTL/ZZ.h)
+    find_library(NTL_LIBRARY NAMES ntl)
+    if(NOT NTL_INCLUDE_DIR OR NOT NTL_LIBRARY)
+        message(FATAL_ERROR "NTL development files are required. On Ubuntu/Debian, install libntl-dev.")
+    endif()
+    add_library(ntl UNKNOWN IMPORTED)
+    set_target_properties(ntl PROPERTIES
+        IMPORTED_LOCATION "${NTL_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${NTL_INCLUDE_DIR}"
+    )
+elseif(NTL_SHARED)
+    add_library(ntl SHARED ${NTL_SOURCES})
+    set_target_properties(ntl PROPERTIES
+        VERSION ${PROJECT_VERSION}
+        SOVERSION ${PROJECT_VERSION_MAJOR}
+        OUTPUT_NAME "ntl"
+    )
+else()
+    add_library(ntl STATIC ${NTL_SOURCES})
+    set_target_properties(ntl PROPERTIES
+        OUTPUT_NAME "ntl"
+    )
+endif()
+
+if(NOT USE_SYSTEM_NTL)
+    target_include_directories(ntl PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    )
+endif()
+
+# Link libraries (if needed)
+if(UNIX AND NOT USE_SYSTEM_NTL)
+    find_library(M_LIB m)
+    if(M_LIB)
+        target_link_libraries(ntl PRIVATE ${M_LIB})
+    endif()
+endif()
+
+# Threading support
+if(NTL_THREADS)
+    find_package(Threads REQUIRED)
+    if(USE_SYSTEM_NTL)
+        target_link_libraries(ntl INTERFACE Threads::Threads)
+    else()
+        target_link_libraries(ntl PUBLIC Threads::Threads)
+    endif()
+endif()
+
+# OpenSSL support (optional, for prime verification)
+find_package(OpenSSL QUIET)
+if(OpenSSL_FOUND)
+    message(STATUS "OpenSSL found: ${OPENSSL_VERSION}")
+    message(STATUS "  OpenSSL include dir: ${OPENSSL_INCLUDE_DIR}")
+    message(STATUS "  OpenSSL libraries: ${OPENSSL_LIBRARIES}")
+else()
+    message(STATUS "OpenSSL not found - prime verification will be disabled")
+    message(STATUS "  To enable OpenSSL verification, install OpenSSL development libraries")
+    message(STATUS "  Windows: vcpkg install openssl or download from https://slproweb.com/products/Win32OpenSSL.html")
+    message(STATUS "  Linux: sudo apt-get install libssl-dev (Debian/Ubuntu) or sudo yum install openssl-devel (RHEL/CentOS)")
+    message(STATUS "  macOS: brew install openssl")
+endif()
+
+# Installation of the vendored library
+if(NOT USE_SYSTEM_NTL)
+    install(TARGETS ntl
+        EXPORT NTLTargets
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+        RUNTIME DESTINATION bin
+    )
+
+    install(DIRECTORY include/NTL
+        DESTINATION include
+        FILES_MATCHING PATTERN "*.h"
+    )
+
+    install(EXPORT NTLTargets
+        FILE NTLTargets.cmake
+        NAMESPACE NTL::
+        DESTINATION lib/cmake/NTL
+    )
+
+    # Create config files for find_package (everything in one CMakeLists.txt, no .in file)
+    include(CMakePackageConfigHelpers)
+
+    # Create NTLConfig.cmake directly - no separate template file needed
+    # We handle PACKAGE_INIT manually
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/NTLConfig.cmake"
+"# NTL Config file for find_package
+# Generated by CMakeLists.txt - no separate .in template needed
+
+# Get the directory containing this file
+get_filename_component(NTL_CMAKE_DIR \"\${CMAKE_CURRENT_LIST_FILE}\" PATH)
+
+# Include the package initialization code
+include(CMakeFindDependencyMacro)
+
+# Import targets (modern CMake way - recommended)
+if(NOT TARGET NTL::ntl)
+    include(\"\${NTL_CMAKE_DIR}/NTLTargets.cmake\")
+endif()
+
+# Set version
+set(NTL_VERSION \"${PROJECT_VERSION}\")
+
+# Legacy compatibility variables
+set(NTL_FOUND TRUE)
+set(NTL_INCLUDE_DIRS \"\${NTL_CMAKE_DIR}/../../include\")
+")
+
+    write_basic_package_version_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/NTLConfigVersion.cmake"
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY AnyNewerVersion
+    )
+
+    install(FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/NTLConfig.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/NTLConfigVersion.cmake"
+        DESTINATION lib/cmake/NTL
+    )
+endif()
+
+# Add executable for user application
+set(USER_SOURCES
+    main.cpp
+    RSAKeyManager.cpp
+    PrimeFileManager.cpp
+    RSACrypto.cpp
+)
+
+add_executable(prime_generator ${USER_SOURCES})
+target_link_libraries(prime_generator PRIVATE ntl)
+
+# Link OpenSSL if found
+if(OpenSSL_FOUND)
+    target_include_directories(prime_generator PRIVATE ${OPENSSL_INCLUDE_DIR})
+    target_link_libraries(prime_generator PRIVATE ${OPENSSL_LIBRARIES})
+    target_compile_definitions(prime_generator PRIVATE OPENSSL_FOUND)
+    message(STATUS "  OpenSSL verification enabled for prime_generator")
+endif()
+
+# Более строгие предупреждения для пользовательских файлов
+if(NOT MSVC)
+    target_compile_options(prime_generator PRIVATE
+        -Wall -Wextra -Wpedantic
+        -Wno-unused-parameter      # Разрешаем неиспользуемые параметры (для совместимости)
+        -Wno-unused-variable        # Неиспользуемые переменные
+        -Wno-maybe-uninitialized    # Возможно неинициализированные переменные
+        -Wno-reorder                 # Порядок инициализации полей
+    )
+else()
+    target_compile_options(prime_generator PRIVATE
+        /W4  # Уровень предупреждений 4 для MSVC
+        /wd4100  # Разрешаем неиспользуемые параметры
+    )
+endif()
+
+# Print configuration summary
+message(STATUS "")
+message(STATUS "NTL Configuration:")
+message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "  C++ standard: ${CMAKE_CXX_STANDARD}")
+if(USE_SYSTEM_NTL)
+    message(STATUS "  System NTL: ${NTL_LIBRARY}")
+else()
+    list(LENGTH NTL_SOURCES NTL_SOURCES_COUNT)
+    message(STATUS "  Version: ${PROJECT_VERSION}")
+    message(STATUS "  Shared library: ${NTL_SHARED}")
+    message(STATUS "  Threads: ${NTL_THREADS}")
+    message(STATUS "  Thread boost: ${NTL_THREAD_BOOST}")
+    message(STATUS "  Exceptions: ${NTL_EXCEPTIONS}")
+    message(STATUS "  Source files: ${NTL_SOURCES_COUNT}")
+endif()
+message(STATUS "  User executable: prime_generator")
+if(OpenSSL_FOUND)
+    message(STATUS "  OpenSSL: ${OPENSSL_VERSION} (prime verification enabled)")
+else()
+    message(STATUS "  OpenSSL: not found (prime verification disabled)")
+endif()
+message(STATUS "")
+

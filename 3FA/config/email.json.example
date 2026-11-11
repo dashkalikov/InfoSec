@@ -1,0 +1,23 @@
+{
+  "_comment": "Конфигурация для отправки email через SMTP",
+  "_description": "Этот файл используется для отправки кодов верификации при восстановлении пароля",
+  "_instructions": "Скопируйте этот файл в email.json и заполните своими данными",
+  
+  "smtp": {
+    "_comment": "Настройки SMTP сервера",
+    "host": "smtp.gmail.com",
+    "_comment_host": "Адрес SMTP сервера (например: smtp.gmail.com, smtp.mail.ru, smtp.yandex.ru)",
+    
+    "port": 587,
+    "_comment_port": "Порт SMTP сервера (587 для STARTTLS, 465 для SSL)",
+    
+    "username": "your_email@gmail.com",
+    "_comment_username": "Email адрес для авторизации на SMTP сервере",
+    
+    "password": "your_app_password_here",
+    "_comment_password": "Пароль приложения (для Gmail) или обычный пароль. Для Gmail необходимо использовать пароль приложения, а не основной пароль",
+    
+    "use_ssl": true,
+    "_comment_use_ssl": "Использовать SSL/TLS (true для порта 465, false для порта 587 с STARTTLS)"
+  }
+}
