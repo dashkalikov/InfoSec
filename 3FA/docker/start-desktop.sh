@@ -3,6 +3,16 @@ set -euo pipefail
 
 mkdir -p "$XDG_RUNTIME_DIR"
 chmod 700 "$XDG_RUNTIME_DIR"
+
+if [[ ${THREEFA_DISPLAY_MODE:-} == desktop ]]; then
+    if ! xdpyinfo >/dev/null 2>&1; then
+        echo "Cannot connect to the desktop display $DISPLAY. Check the X11 socket and authorization." >&2
+        exit 1
+    fi
+    cd /opt/threefa/build
+    exec ./3FA
+fi
+
 children=()
 
 cleanup() {

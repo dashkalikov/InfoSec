@@ -58,15 +58,31 @@ RSA поддерживает пары до 65 536 бит. Генерация �
 
 ## Docker на Windows и Linux
 
-Откройте папку `3FA` в терминале. На Windows сначала запустите Docker Desktop с Linux-контейнерами.
+### Окно на рабочем столе
+
+В этом режиме приложение работает внутри Linux-контейнера и открывает своё окно на рабочем столе. Нужен Docker Compose 2.24.4 или новее.
+
+**Windows.** Запустите Docker Desktop с движком WSL 2. В **Settings → Resources → WSL Integration** включите интеграцию для Ubuntu или другого дистрибутива WSL 2 с WSLg. Затем запустите `run-docker-desktop.bat` из корня проекта. Для запуска из конкретного дистрибутива откройте его терминал и выполните `bash ./run-docker-desktop.sh` из корня проекта.
+
+**Linux.** В сеансе X11 или Wayland с XWayland выполните из корня проекта:
+
+```bash
+bash ./run-docker-desktop.sh
+```
+
+Терминал показывает журнал контейнера, пока приложение открыто. Закройте окно 3FA, чтобы остановить контейнер. Сохранённые данные остаются в тех же Docker-томах, что и при запуске через браузер.
+
+### Доступ через браузер
+
+На Windows запустите Docker Desktop в режиме Linux-контейнеров. На Linux запустите Docker Engine. Нужен Docker Compose 2.20.3 или новее. Выполните команду из корня проекта, где лежит `compose.yaml`.
 
 ```sh
 docker compose up -d --build --wait
 ```
 
-Откройте [окно 3FA](http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=scale) в браузере. Образ включает Qt, OpenCV, криптографические библиотеки и Python-зависимости. Контейнер хранит свою SQLite-базу, настройки, ключи и простые числа в Docker-томах. Для сохранения PDF выберите `/home/threefa/exports` внутри окна приложения. Скопировать файл на компьютер можно командой `docker compose cp app:/home/threefa/exports/имя.pdf .`.
+При первом запуске Docker собирает образ со всеми зависимостями. Когда команда завершится, откройте [окно 3FA](http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=scale) в браузере. Контейнер хранит свою SQLite-базу, настройки, ключи и простые числа в Docker-томах. Для сохранения PDF выберите `/home/threefa/exports` внутри окна приложения. Скопировать файл на компьютер можно командой `docker compose cp app:/home/threefa/exports/имя.pdf .`.
 
-Для восстановления пароля создайте `config/email.json` из `config/email.json.example` и укажите параметры SMTP. Скопируйте конфигурацию в том командой `docker compose cp config/email.json app:/opt/threefa/config/email.json` и перезапустите контейнер через `docker compose restart app`.
+Для восстановления пароля создайте `3FA/config/email.json` из `3FA/config/email.json.example` и укажите параметры SMTP. Скопируйте конфигурацию в том командой `docker compose cp 3FA/config/email.json app:/opt/threefa/config/email.json` и перезапустите контейнер через `docker compose restart app`.
 
 По умолчанию страницу с кодом можно открыть в браузере компьютера по кнопке **Копировать ссылку** на втором этапе. Для QR на телефоне создайте в папке `3FA` файл `.env` и укажите IPv4-адрес компьютера в локальной сети, например `THREEFA_LAN_IP=192.168.1.131`. Повторите `docker compose up -d --wait`. Телефон должен находиться в той же сети, а входящий TCP-порт `8765` должен быть доступен с телефона. Само окно 3FA доступно через браузер компьютера на порту `6080`.
 
@@ -74,7 +90,7 @@ docker compose up -d --build --wait
 
 ```sh
 THREEFA_CAMERA_GID=$(stat -c '%g' /dev/video0) \
-  docker compose -f compose.yaml -f compose.camera.yaml up -d --build --wait
+  docker compose -f 3FA/compose.yaml -f 3FA/compose.camera.yaml up -d --build --wait
 ```
 
 Для другого устройства укажите `THREEFA_CAMERA_DEVICE` и группу этого устройства. Для камеры Windows используйте обычный запуск через `run.bat`. В Docker Desktop вариант с камерой требует отдельного проброса USB/IP и появления устройства `/dev/video*` в Linux-среде Docker. [Docker Desktop и USB](https://docs.docker.com/desktop/troubleshoot-and-support/faqs/general/)

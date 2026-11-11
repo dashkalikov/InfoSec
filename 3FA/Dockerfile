@@ -56,4 +56,7 @@ COPY docker/start-desktop.sh /usr/local/bin/start-desktop
 
 USER threefa
 EXPOSE 6080 8765
+HEALTHCHECK --interval=5s --timeout=3s --start-period=20s --retries=5 \
+    CMD curl -fsS -o /dev/null http://127.0.0.1:6080/vnc.html \
+    && xwininfo -root -tree | grep -Fq '"3FA — Безопасность"'
 ENTRYPOINT ["/bin/bash", "/usr/local/bin/start-desktop"]

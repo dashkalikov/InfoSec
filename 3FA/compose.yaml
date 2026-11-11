@@ -15,12 +15,6 @@ services:
       - config:/opt/threefa/config
       - settings:/home/threefa/.config
       - exports:/home/threefa/exports
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:6080/vnc.html"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-
 volumes:
   databases:
   rsa-keys:

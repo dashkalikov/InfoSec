@@ -1,0 +1,24 @@
+services:
+  app:
+    environment:
+      THREEFA_DISPLAY_MODE: desktop
+      DISPLAY: "${DISPLAY:?Launch from a Linux graphical session or WSLg}"
+      XAUTHORITY: /run/threefa/Xauthority
+      QT_X11_NO_MITSHM: "1"
+    ports: !override
+      - "${THREEFA_LAN_IP:-127.0.0.1}:8765:8765"
+    volumes:
+      - type: bind
+        source: "${THREEFA_X11_SOCKET_DIR:?Run run-docker-desktop.sh}"
+        target: /tmp/.X11-unix
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: "${THREEFA_XAUTH_FILE:?Run run-docker-desktop.sh}"
+        target: /run/threefa/Xauthority
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test: ["CMD-SHELL", "xwininfo -root -tree | grep -Fq '\"3FA — Безопасность\"'"]
