@@ -56,6 +56,7 @@ private:
     bool validateEmail(const QString &email);
     bool validatePasswordFormat(const QString &password);
     QString generateVerificationCode();
+    QString deliveryLabel() const;
     bool sendVerificationCode(const QString &email, const QString &code);
     void loadEmailConfig(); // Загрузка конфигурации email из файла
     void setupTimer(); // Настройка таймера обратного отсчета
@@ -100,6 +101,9 @@ private:
     // Состояние
     int m_currentStep;
     QString m_currentEmail;
+    QString m_deliveryEmail;
+    QString m_adminRecoveryAccount;
+    QString m_adminRecoveryRecipient;
     QString m_verificationCode;
     bool m_codeVerified;
     

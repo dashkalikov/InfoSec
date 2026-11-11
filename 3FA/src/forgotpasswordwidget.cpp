@@ -261,6 +261,7 @@ void ForgotPasswordWidget::resetForm()
     m_currentStep = 1;
     m_codeVerified = false;
     m_currentEmail.clear();
+    m_deliveryEmail.clear();
     m_verificationCode.clear();
 
     // Останавливаем таймер
@@ -353,7 +354,7 @@ void ForgotPasswordWidget::showStep(int step)
                 }
                 break;
             case 2:
-                m_subtitleLabel->setText(QString("Код отправлен на %1").arg(m_currentEmail));
+                m_subtitleLabel->setText(QString("Код отправлен на %1").arg(deliveryLabel()));
                 break;
             case 3:
                 m_subtitleLabel->setText("Введите новый пароль");
@@ -382,23 +383,25 @@ void ForgotPasswordWidget::onSendCodeClicked()
     }
 
     // Проверяем, существует ли пользователь
-    if (!m_database || !m_database->userExists(email)) {
+    const auto user = m_database ? m_database->findUserByEmail(email) : User{};
+    if (!user.isValid()) {
         AppMessage::warning(this, "Ошибка", "Пользователь с таким email не найден");
         return;
     }
 
-    // Генерируем код верификации
-    m_verificationCode = generateVerificationCode();
-    m_currentEmail = email;
+    const auto account = user.getEmail();
+    const bool useBackup = user.isAdmin() && !m_adminRecoveryRecipient.isEmpty() &&
+        account.compare(m_adminRecoveryAccount, Qt::CaseInsensitive) == 0;
+    const QString recipient = useBackup ? m_adminRecoveryRecipient : account;
+    const QString code = generateVerificationCode();
 
-    // Отправляем код по email
-    if (sendVerificationCode(email, m_verificationCode)) {
-        // Если email сервис настроен, показываем простое сообщение
-        if (m_emailService && m_emailService->isConfigured()) {
-            AppMessage::information(this, "Код отправлен",
-                QString("Код верификации отправлен на %1\n\nПроверьте вашу почту.").arg(email));
-        }
-        // Иначе код уже показан в sendVerificationCode
+    if (sendVerificationCode(recipient, code)) {
+        m_verificationCode = code;
+        m_currentEmail = account;
+        m_deliveryEmail = recipient;
+        m_codeVerified = false;
+        AppMessage::information(this, "Код отправлен",
+            QString("Код верификации отправлен на %1\n\nПроверьте вашу почту.").arg(deliveryLabel()));
 
         showStep(2);
 
@@ -417,8 +420,6 @@ void ForgotPasswordWidget::onSendCodeClicked()
         if (m_resendCodeButton) {
             m_resendCodeButton->setEnabled(false);
         }
-    } else {
-        AppMessage::critical(this, "Ошибка", "Не удалось отправить код верификации");
     }
 }
 
@@ -433,21 +434,18 @@ void ForgotPasswordWidget::setupTimer()
 void ForgotPasswordWidget::onResendCodeClicked()
 {
     // Повторно отправляем код
-    if (m_currentEmail.isEmpty()) {
+    if (m_currentEmail.isEmpty() || m_deliveryEmail.isEmpty()) {
         AppMessage::warning(this, "Ошибка", "Email не указан");
         return;
     }
 
-    // Генерируем новый код
-    m_verificationCode = generateVerificationCode();
+    const QString code = generateVerificationCode();
 
-    // Отправляем код по email
-    if (sendVerificationCode(m_currentEmail, m_verificationCode)) {
-        // Если email сервис настроен, показываем простое сообщение
-        if (m_emailService && m_emailService->isConfigured()) {
-            AppMessage::information(this, "Код отправлен",
-                QString("Код верификации повторно отправлен на %1\n\nПроверьте вашу почту.").arg(m_currentEmail));
-        }
+    if (sendVerificationCode(m_deliveryEmail, code)) {
+        m_verificationCode = code;
+        m_codeVerified = false;
+        AppMessage::information(this, "Код отправлен",
+            QString("Код верификации повторно отправлен на %1\n\nПроверьте вашу почту.").arg(deliveryLabel()));
 
         // Сбрасываем таймер
         m_codeExpirySeconds = 600; // 10 минут
@@ -464,8 +462,6 @@ void ForgotPasswordWidget::onResendCodeClicked()
             m_verificationCodeWidget->clear();
             m_verificationCodeWidget->setFocus();
         }
-    } else {
-        AppMessage::critical(this, "Ошибка", "Не удалось отправить код верификации");
     }
 }
 
@@ -698,17 +694,24 @@ void ForgotPasswordWidget::loadEmailConfig()
             configFile.close();
 
             qDebug() << "EmailService: Размер файла:" << data.size() << "байт";
-            qDebug() << "EmailService: Содержимое файла:" << QString::fromUtf8(data);
 
             QJsonParseError parseError;
             QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
 
             if (parseError.error != QJsonParseError::NoError) {
                 qWarning() << "EmailService: Ошибка парсинга JSON:" << parseError.errorString() << "в позиции" << parseError.offset;
-                qWarning() << "EmailService: Содержимое файла:" << QString::fromUtf8(data);
             } else if (doc.isObject()) {
                 QJsonObject obj = doc.object();
                 qDebug() << "EmailService: JSON успешно распарсен, объект содержит ключи:" << obj.keys();
+
+                const auto recovery = obj.value("admin_recovery").toObject();
+                const auto account = recovery.value("account").toString().trimmed();
+                const auto recipient = recovery.value("recipient").toString().trimmed();
+                if (validateEmail(account) && validateEmail(recipient) &&
+                    account.compare(recipient, Qt::CaseInsensitive) != 0) {
+                    m_adminRecoveryAccount = account;
+                    m_adminRecoveryRecipient = recipient;
+                }
 
                 // Проверяем, есть ли настройки API (SendGrid, Mailgun и т.д.)
                 if (obj.contains("api")) {
@@ -786,32 +789,18 @@ void ForgotPasswordWidget::toggleConfirmPasswordVisibility()
     }
 }
 
-bool ForgotPasswordWidget::sendVerificationCode(const QString &email, const QString &code)
+QString ForgotPasswordWidget::deliveryLabel() const
 {
-    if (!m_emailService) {
-        qWarning() << "EmailService не инициализирован";
-        return false;
-    }
-
-    // Если email сервис не настроен, показываем код в сообщении (для тестирования)
-    if (!m_emailService->isConfigured()) {
-        qWarning() << "EmailService не настроен, показываем код в сообщении";
-        AppMessage::persistent(this, "Код верификации",
-            QString("Email сервис не настроен.\n\nКод верификации: %1\n\nДля настройки email создайте файл config/email.json").arg(code));
-        return true; // Возвращаем true для продолжения процесса
-    }
-
-    // Отправляем код через EmailService
-    if (m_emailService->sendVerificationCode(email, code)) {
-        qDebug() << "Код верификации отправлен на" << email;
-        return true;
-    } else {
-        QString error = m_emailService->getLastError();
-        qWarning() << "Не удалось отправить код верификации:" << error;
-        // Показываем код в сообщении как fallback
-        AppMessage::warning(this, "Ошибка отправки email",
-            QString("Не удалось отправить код по email:\n%1\n\nКод верификации: %2\n\nИспользуйте этот код для продолжения.").arg(error).arg(code));
-        return true; // Возвращаем true, чтобы пользователь мог продолжить
-    }
+    return m_deliveryEmail == m_currentEmail ? m_currentEmail : QStringLiteral("резервную почту");
 }
 
+bool ForgotPasswordWidget::sendVerificationCode(const QString &email, const QString &code)
+{
+    if (!m_emailService || !m_emailService->isConfigured()) {
+        AppMessage::critical(this, "Почта недоступна", "Отправка писем для восстановления пока не настроена.");
+        return false;
+    }
+    if (m_emailService->sendVerificationCode(email, code)) return true;
+    AppMessage::critical(this, "Почта недоступна", "Не удалось отправить код. Попробуйте позже или обратитесь к администратору.");
+    return false;
+}

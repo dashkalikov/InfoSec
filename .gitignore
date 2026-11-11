@@ -38,3 +38,4 @@ exports/
 *.a
 !/3FA/algorithms/RSA-32768/lib/libntl.a
 .DS_Store
+/.private-backup/

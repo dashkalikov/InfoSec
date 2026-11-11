@@ -24,6 +24,7 @@
 import sys                                  # Системные функции (stdin, stdout, stderr, exit)
 import json                                 # Работа с JSON данными (парсинг, сериализация)
 import smtplib                              # Библиотека для работы с SMTP протоколом
+import ssl                                  # Проверка сертификатов SMTP-сервера
 from email.mime.text import MIMEText        # Класс для создания текстовых частей сообщения
 from email.mime.multipart import MIMEMultipart  # Класс для создания многочастных сообщений
 from email.header import Header                 # Класс для корректной обработки заголовков с UTF-8
@@ -122,11 +123,11 @@ def send_email(smtp_config, to_email, subject, body):
             # smtplib.SMTP() создает незашифленное соединение
             server = smtplib.SMTP(host, port)
             # server.starttls() переводит соединение на TLS шифрование
-            server.starttls()
+            server.starttls(context=ssl.create_default_context())
         elif use_ssl:
             # Для порта 465 (Gmail SSL) используем SMTP_SSL
             # smtplib.SMTP_SSL() создает сразу зашифрованное SSL соединение
-            server = smtplib.SMTP_SSL(host, port)
+            server = smtplib.SMTP_SSL(host, port, context=ssl.create_default_context())
         else:
             # Без SSL (не рекомендуется для безопасности)
             # Используется только для тестирования или внутренних сетей

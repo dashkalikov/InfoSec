@@ -36,7 +36,8 @@ void EmailService::setSmtpConfig(const QString &host, int port, const QString &u
     m_smtpUsername = username;
     m_smtpPassword = password;
     m_smtpUseSsl = useSsl;
-    m_configured = !host.isEmpty() && !username.isEmpty();
+    m_fromEmail = username;
+    m_configured = !host.isEmpty() && !username.isEmpty() && !password.isEmpty();
     
     if (m_configured) {
         qDebug() << "EmailService: SMTP настроен:" << host << ":" << port;

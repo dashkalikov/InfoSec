@@ -19,5 +19,10 @@
     
     "use_ssl": true,
     "_comment_use_ssl": "Использовать SSL/TLS (true для порта 465, false для порта 587 с STARTTLS)"
+  },
+  "admin_recovery": {
+    "_comment": "Резервная почта для восстановления одного аккаунта администратора",
+    "account": "admin@example.com",
+    "recipient": ""
   }
 }
