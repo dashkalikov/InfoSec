@@ -201,6 +201,7 @@ private:
     QFutureWatcher<QVariantMap> *m_keyGenerationWatcher;
     QFutureWatcher<QVariantMap> *m_keySaveWatcher;
     QFutureWatcher<QVariantMap> *m_primeGenerationWatcher;
+    QFutureWatcher<bool> *m_defaultPrimesWatcher = nullptr;
     QFutureWatcher<QVariantMap> *m_encryptDecryptWatcher;
 
     // Данные последней операции для экспорта
@@ -224,6 +225,7 @@ private:
     QVariantMap currentPrimeData(MaterialComboBox *combo) const;
     bool loadPrimeFromPath(const QString &path, BigInt &prime, QString &errorMessage) const;
     QString resolveDefaultPrimesDirectory() const;
+    void prepareDefaultPrimes();
     QVariantMap makePrimeData(const QFileInfo &info) const;
     void ensureKeyGenerationWatcher();
     void ensureKeySaveWatcher();

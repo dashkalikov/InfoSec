@@ -19,6 +19,7 @@
 #include <QNetworkReply>
 #include <QUrlQuery>
 #include <QFile>
+#include <QLockFile>
 #include <QSaveFile>
 #include <QSignalBlocker>
 #include <QTemporaryDir>
@@ -238,6 +239,30 @@ BigInt generateRsaPrime(int bits, std::atomic_bool &cancel)
         return BigInt(bytes);
     }
     throw std::runtime_error("OpenSSL could not generate the RSA prime");
+}
+
+bool writeDefaultPrimes(const QString &directory)
+{
+    const QDir dir(directory);
+    QLockFile lock(dir.filePath(".setup.lock"));
+    if (!lock.tryLock(10000)) return false;
+
+    std::atomic_bool cancel{false};
+    try {
+        for (const int bits : {1024, 1536}) {
+            for (const QChar factor : {QChar('p'), QChar('q')}) {
+                const auto path = dir.filePath(QString("rsa_%1_%2.txt").arg(factor).arg(bits));
+                if (QFileInfo(path).isFile()) continue;
+                const auto prime = generateRsaPrime(bits, cancel);
+                const auto decimal = QByteArray::fromStdString(BigIntConversion::gmpFastToDecimal(prime));
+                if (!writeKeyFile(path, decimal + '\n')) return false;
+            }
+        }
+    } catch (const std::exception &error) {
+        qWarning() << "Could not prepare RSA primes:" << error.what();
+        return false;
+    }
+    return true;
 }
 
 int extractRsaKeyBitLength(const QString &keyPath)
@@ -1107,7 +1132,7 @@ void KuznechikWidget::onAlgorithmChanged(int id)
             m_rsaTypeLabel->setVisible(true); // Показываем тип RSA для RSA режима
         }
         refreshPrimeSelections();
-        updatePrimeControlsState();
+        prepareDefaultPrimes();
 
         // Загружаем ключи из папки
         loadRSAKeysFromDirectory();
@@ -1160,6 +1185,7 @@ void KuznechikWidget::setUserId(int userId)
     if (m_userId == userId) return;
     if (m_cancelRsa) m_cancelRsa->store(true);
     m_userId = userId;
+    m_primesDirectory.clear();
     m_generatedKeySize = 0;
     m_lastOperation = OpNone;
     m_lastKey.clear();
@@ -1174,8 +1200,11 @@ void KuznechikWidget::setUserId(int userId)
     m_privateKeyCombo->setCurrentIndex(-1);
     m_savePdfButton->setEnabled(false);
     loadKuznechikKeys();
-    if (m_currentAlgorithm == RSAAlgorithm) loadRSAKeysFromDirectory();
-    updatePrimeControlsState();
+    refreshPrimeSelections();
+    if (m_currentAlgorithm == RSAAlgorithm) {
+        loadRSAKeysFromDirectory();
+        prepareDefaultPrimes();
+    }
 }
 
 QString KuznechikWidget::managedKeyDirectory(const QString &algorithm) const
@@ -1370,22 +1399,52 @@ QString KuznechikWidget::resolveDefaultPrimesDirectory() const
         return m_primesDirectory;
     }
 
-    QDir projectRoot(resolveProjectRoot());
-    QString primesPath = projectRoot.absoluteFilePath("generated_primes");
-    if (QDir(primesPath).exists()) {
-        return primesPath;
-    }
+    QString subdirectory = "generated_primes";
+    if (m_userId > 0) subdirectory += QString("/user-%1").arg(m_userId);
+    const QString primesPath = QDir(resolveProjectRoot()).absoluteFilePath(subdirectory);
+    if (QDir().mkpath(primesPath)) return primesPath;
 
     QString docs = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
     if (docs.isEmpty()) {
         docs = QDir::homePath();
     }
-    QDir documentsDir(docs);
-    QString fallback = documentsDir.absoluteFilePath("generated_primes");
-    if (!QDir(fallback).exists()) {
-        QDir().mkpath(fallback);
+    const QString fallback = QDir(docs).absoluteFilePath(subdirectory);
+    return QDir().mkpath(fallback) ? fallback : QString{};
+}
+
+void KuznechikWidget::prepareDefaultPrimes()
+{
+    if (m_userId <= 0 || !m_primesDirectory.isEmpty() || m_defaultPrimesWatcher) return;
+
+    const auto directory = resolveDefaultPrimesDirectory();
+    if (directory.isEmpty()) {
+        m_primesStatusLabel->setText("Выберите папку, доступную для записи.");
+        return;
     }
-    return fallback;
+
+    const int userId = m_userId;
+    auto *watcher = new QFutureWatcher<bool>(this);
+    m_defaultPrimesWatcher = watcher;
+    m_selectPrimesDirButton->setEnabled(false);
+    m_primesStatusLabel->setText("Подготовка простых чисел для RSA…");
+    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, userId, directory] {
+        const bool ready = watcher->result();
+        m_defaultPrimesWatcher = nullptr;
+        watcher->deleteLater();
+        m_selectPrimesDirButton->setEnabled(true);
+        if (m_userId != userId) {
+            refreshPrimeSelections();
+            if (m_currentAlgorithm == RSAAlgorithm) prepareDefaultPrimes();
+            return;
+        }
+        if (ready) {
+            m_primesDirectory = directory;
+            refreshPrimeSelections();
+        } else {
+            m_primesStatusLabel->setText("Не удалось подготовить простые числа. Выберите папку вручную.");
+        }
+    });
+    watcher->setFuture(QtConcurrent::run(writeDefaultPrimes, directory));
 }
 
 QVariantMap KuznechikWidget::makePrimeData(const QFileInfo &info) const
@@ -1416,9 +1475,6 @@ void KuznechikWidget::refreshPrimeSelections()
         m_primeSecondCombo->setEnabled(false);
         if (m_rsaKeyNameEdit) {
             m_rsaKeyNameEdit->setEnabled(false);
-        }
-        if (m_primesStatusLabel) {
-            m_primesStatusLabel->setText("Сначала выберите папку с простыми числами.");
         }
         // Группа остается активной, но элементы внутри неактивны
         updatePrimeControlsState();
@@ -1481,8 +1537,6 @@ void KuznechikWidget::refreshPrimeSelections()
     if (m_primesStatusLabel) {
         if (entries.isEmpty()) {
             m_primesStatusLabel->setText("В папке не найдено простых чисел. Сгенерируйте или импортируйте их.");
-        } else if (m_primesDirectory.isEmpty()) {
-            m_primesStatusLabel->setText("Сначала выберите папку с простыми числами.");
         } else {
             m_primesStatusLabel->setText("Выберите два различных простых числа одинакового размера.");
         }
@@ -1660,7 +1714,8 @@ void KuznechikWidget::updatePrimeControlsState()
             m_saveRsaKeysButton->setEnabled(false);
         }
         if (m_primesStatusLabel) {
-            m_primesStatusLabel->setText("Сначала выберите папку с простыми числами.");
+            m_primesStatusLabel->setText(m_defaultPrimesWatcher
+                ? "Подготовка простых чисел для RSA…" : "Сначала выберите папку с простыми числами.");
         }
         return;
     }
@@ -1760,6 +1815,7 @@ void KuznechikWidget::onSelectPrimesDirectory()
 {
     qDebug() << "onSelectPrimesDirectory: слот вызван";
 
+    if (m_defaultPrimesWatcher) return;
     if (!m_selectPrimesDirButton) {
         qDebug() << "onSelectPrimesDirectory: кнопка не инициализирована";
         return;
